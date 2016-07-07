@@ -128,43 +128,54 @@ object PersistBenchmark {
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Disk_BufferCacheOn",
-      saveAsFile = "/tmp/PersistBenchmark1"), results)
+      saveAsFile = "/tmp/PersistBenchmark1",
+      dropBufferCache = false), results)
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Disk_BufferCacheOff",
-      saveAsFile = "/tmp/PersistBenchmark2", dropBufferCache = true), results)
+      saveAsFile = "/tmp/PersistBenchmark2",
+      dropBufferCache = true), results)
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Alluxio_BufferCacheOn",
-      saveAsFile = "alluxio://localhost:19998/PersistBenchmark1"), results)
+      saveAsFile = "alluxio://localhost:19998/PersistBenchmark1",
+      dropBufferCache = false), results)
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Alluxio_BufferCacheOff",
-      saveAsFile = "alluxio://localhost:19998/PersistBenchmark2", dropBufferCache = true), results)
+      saveAsFile = "alluxio://localhost:19998/PersistBenchmark2",
+      dropBufferCache = true), results)
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_S3_BufferCacheOn",
-      saveAsFile = "s3n://peis-autobot/PersistBenchmark1"), results)
+      saveAsFile = "s3n://peis-autobot/PersistBenchmark1",
+      dropBufferCache = false), results)
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_S3_BufferCacheOff",
-      saveAsFile = "s3n://peis-autobot/PersistBenchmark2", dropBufferCache = true), results)
+      saveAsFile = "s3n://peis-autobot/PersistBenchmark2",
+      dropBufferCache = true), results)
 
 
     persistBenchmark(spark, runConfig.copy(
       testName = "Persist_MemoryOnly_BufferCacheOn",
-      storageLevel = StorageLevel.MEMORY_ONLY), results)
+      storageLevel = StorageLevel.MEMORY_ONLY,
+      dropBufferCache = false), results)
 
     persistBenchmark(spark, runConfig.copy(
       testName = "Persist_MemoryOnlySer_BufferCacheOn",
-      storageLevel = StorageLevel.MEMORY_ONLY_SER), results)
+      storageLevel = StorageLevel.MEMORY_ONLY_SER,
+      dropBufferCache = false), results)
 
     persistBenchmark(spark, runConfig.copy(
-      testName = "Persist_Disk_BufferCacheOn", storageLevel = StorageLevel.DISK_ONLY), results)
+      testName = "Persist_Disk_BufferCacheOn",
+      storageLevel = StorageLevel.DISK_ONLY,
+      dropBufferCache = false), results)
 
     persistBenchmark(spark, runConfig.copy(
       testName = "Persist_Disk_BufferCacheOff",
-      storageLevel = StorageLevel.DISK_ONLY, dropBufferCache = true), results)
+      storageLevel = StorageLevel.DISK_ONLY,
+      dropBufferCache = true), results)
 
     printResults(results)
 
