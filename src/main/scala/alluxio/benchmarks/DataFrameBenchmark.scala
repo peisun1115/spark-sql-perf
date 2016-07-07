@@ -136,7 +136,7 @@ object DataFrameBenchmark {
       s"[cacheTime ${result.cacheTime}] [runTime1 ${result.runTime1}] [runTime2 ${result.runTime2}]")
   }
 
-  def printResults(results: ArrayBuffer[DataFrameResult): Unit = {
+  def printResults(results: ArrayBuffer[DataFrameResult]): Unit = {
     for (result <- results) {
       printResult(result)
     }
@@ -163,7 +163,7 @@ object DataFrameBenchmark {
       results)
     parquetWrite(spark, sqlContext, config.copy(
       testName = "Write_S3",
-      inputFile = "s3n://peis-autobot/parquet"),
+      inputFile = "s3n://peis-autobot/alluxio_storage/parquet"),
       results)
     parquetWrite(spark, sqlContext, config.copy(
       testName = "Write_Alluxio",
@@ -184,7 +184,7 @@ object DataFrameBenchmark {
       results)
     dfRead(sqlContext, config.copy(
       testName = "Read_S3",
-      inputFile = "s3n://peis-autobot/parquet"),
+      inputFile = "s3n://peis-autobot/alluxio_storage/parquet"),
       results)
 
     dfPersist(sqlContext, config.copy(
