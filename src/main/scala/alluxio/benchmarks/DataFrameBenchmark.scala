@@ -17,8 +17,18 @@ import org.apache.spark._
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.storage.StorageLevel
 
+import scala.sys.process._
+
+/**
+  * Objectives:
+  * 1.
+  */
 
 object DataFrameBenchmark {
+  def dropBufferCache(): Unit = {
+    "free && sync && echo 3 > /proc/sys/vm/drop_caches && free" !
+  }
+
  def dfBenchmark(sqlContext: SQLContext, inputFile: String, cache: Boolean = false): Unit = {
     val start = Calendar.getInstance().getTimeInMillis()
     val df = sqlContext.read.parquet(inputFile)
@@ -73,7 +83,6 @@ object DataFrameBenchmark {
 
 
     val sqlContext = new SQLContext(spark)
-    import sqlContext.implicits._
 
     val now = Calendar.getInstance().getTime()
     println("Loading ", now)

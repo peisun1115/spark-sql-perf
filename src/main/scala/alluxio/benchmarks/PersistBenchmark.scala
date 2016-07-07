@@ -119,6 +119,10 @@ object PersistBenchmark {
     val conf = new SparkConf().setAppName("PersistBenchmark")
     val spark = new SparkContext(conf)
 
+    val hadoopConf = spark.hadoopConfiguration
+    hadoopConf.set("fs.s3.awsAccessKeyId", sys.env.getOrElse("AWS_ACCESS_KEY_ID", ""))
+    hadoopConf.set("fs.s3.awsSecretAccessKey", sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", ""))
+
     val runConfig = RunConfig(inputFile = args(0), iterations = args(1).toInt)
     val results = ArrayBuffer.empty[Result]
 
@@ -137,6 +141,15 @@ object PersistBenchmark {
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Alluxio_BufferCacheOff",
       saveAsFile = "alluxio://localhost:19998/PersistBenchmark2", dropBufferCache = true), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testName = "SaveAsObjectFile_S3_BufferCacheOn",
+      saveAsFile = "s3n://peis-autobot/PersistBenchmark1"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testName = "SaveAsObjectFile_S3_BufferCacheOff",
+      saveAsFile = "s3n://peis-autobot/PersistBenchmark2", dropBufferCache = true), results)
+
 
     persistBenchmark(spark, runConfig.copy(
       testName = "Persist_MemoryOnly_BufferCacheOn",
