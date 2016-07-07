@@ -40,8 +40,8 @@ case class RunConfig(
 
 case class Result(
                  testName: String = "",
-                 saveTime: Long = -1,
-                 runTime: Long = -1
+                 saveTime: Double = -1,
+                 runTime: Double = -1
                  )
 
 object PersistBenchmark {
@@ -61,7 +61,7 @@ object PersistBenchmark {
     start = System.nanoTime()
     b.saveAsObjectFile(runConfig.saveAsFileName)
     end = System.nanoTime()
-    result = result.copy(saveTime = end - start)
+    result = result.copy(saveTime = (end - start) / 1e9)
 
     b = spark.objectFile(runConfig.saveAsFileName)
 
@@ -72,11 +72,12 @@ object PersistBenchmark {
       b.reduceByKey(_ + _)
     }
     end = System.nanoTime()
-    result = result.copy(runTime = end - start)
+    result = result.copy(runTime = ((end - start) / 1e9) / 1e9)
 
     b.unpersist()
 
     results += result
+    dropBufferCache
   }
 
   def persistBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
@@ -91,7 +92,7 @@ object PersistBenchmark {
     start = System.nanoTime
     b.persist(runConfig.storageLevel)
     end = System.nanoTime
-    result = result.copy(saveTime = end - start)
+    result = result.copy(saveTime = (end - start) / 1e9)
 
     if (runConfig.dropBufferCache) dropBufferCache
 
@@ -100,11 +101,12 @@ object PersistBenchmark {
       b.reduceByKey(_ + _)
     }
     end = System.nanoTime
-    result = result.copy(runTime = end - start)
+    result = result.copy(runTime = (end - start) / 1e9)
 
     b.unpersist()
 
     results += result
+    dropBufferCache
   }
 
   def printResults(results: ArrayBuffer[Result]): Unit = {
