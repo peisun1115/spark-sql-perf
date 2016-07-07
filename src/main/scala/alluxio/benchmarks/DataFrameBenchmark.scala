@@ -33,7 +33,7 @@ case class DataFrameConfig(
                             storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
                             size: Int = 500000000
                           ) {
-  def inputFileName() = inputFile + "_" + suffix
+  def inputFileName() = inputFile + suffix
 }
 
 case class DataFrameResult(
