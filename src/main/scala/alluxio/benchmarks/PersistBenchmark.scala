@@ -69,7 +69,7 @@ object PersistBenchmark {
 
     start = System.nanoTime()
     for (i <- 1 to runConfig.iterations) {
-      b.reduceByKey(_ + _)
+      b.reduceByKey(_ + _).count()
     }
     end = System.nanoTime()
     result = result.copy(runTime = ((end - start) / 1e9) / 1e9)
@@ -98,7 +98,7 @@ object PersistBenchmark {
 
     start = System.nanoTime
     for (i <- 1 to runConfig.iterations) {
-      b.reduceByKey(_ + _)
+      b.reduceByKey(_ + _).count()
     }
     end = System.nanoTime
     result = result.copy(runTime = (end - start) / 1e9)
