@@ -11,8 +11,6 @@
 
 package alluxio.benchmarks
 
-import java.util.Calendar
-
 import org.apache.spark._
 import org.apache.spark.storage.StorageLevel
 
@@ -32,10 +30,14 @@ case class RunConfig(
                     testName: String = "",
                     inputFile: String = "",
                     saveAsFile: String = "",
+                    suffix: String = System.nanoTime().toString,
                     storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
                     iterations: Int = 3,
                     dropBufferCache: Boolean = false
-                    )
+                    ) {
+  def saveAsFileName() = saveAsFile + "_" + suffix
+}
+
 case class Result(
                  testName: String = "",
                  saveTime: Long = -1,
@@ -56,20 +58,20 @@ object PersistBenchmark {
 
     // SaveAsObjectFile in local disk.
     var b = a.flatMap(x => x.split(" ")).map(x => (x, 1))
-    start = Calendar.getInstance.getTimeInMillis
-    b.saveAsObjectFile(runConfig.saveAsFile)
-    end = Calendar.getInstance.getTimeInMillis
+    start = System.nanoTime()
+    b.saveAsObjectFile(runConfig.saveAsFileName)
+    end = System.nanoTime()
     result = result.copy(saveTime = end - start)
 
-    b = spark.objectFile(runConfig.saveAsFile)
+    b = spark.objectFile(runConfig.saveAsFileName)
 
     if (runConfig.dropBufferCache) dropBufferCache
 
-    start = Calendar.getInstance().getTimeInMillis
+    start = System.nanoTime()
     for (i <- 1 to runConfig.iterations) {
       b.reduceByKey(_ + _)
     }
-    end = Calendar.getInstance().getTimeInMillis
+    end = System.nanoTime()
     result = result.copy(runTime = end - start)
 
     b.unpersist()
@@ -86,18 +88,18 @@ object PersistBenchmark {
 
     // SaveAs** in local disk
     val b = a.flatMap(x => x.split(" ")).map(x => (x, 1))
-    start = Calendar.getInstance.getTimeInMillis
+    start = System.nanoTime
     b.persist(runConfig.storageLevel)
-    end = Calendar.getInstance.getTimeInMillis
+    end = System.nanoTime
     result = result.copy(saveTime = end - start)
 
     if (runConfig.dropBufferCache) dropBufferCache
 
-    start = Calendar.getInstance.getTimeInMillis
+    start = System.nanoTime
     for (i <- 1 to runConfig.iterations) {
       b.reduceByKey(_ + _)
     }
-    end = Calendar.getInstance.getTimeInMillis
+    end = System.nanoTime
     result = result.copy(runTime = end - start)
 
     b.unpersist()
@@ -122,19 +124,19 @@ object PersistBenchmark {
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Disk_BufferCacheOn",
-      saveAsFile = "/tmp/PersistBenchmark"), results)
+      saveAsFile = "/tmp/PersistBenchmark1"), results)
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Disk_BufferCacheOff",
-      saveAsFile = "/tmp/PersistBenchmark", dropBufferCache = true), results)
+      saveAsFile = "/tmp/PersistBenchmark2", dropBufferCache = true), results)
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Alluxio_BufferCacheOn",
-      saveAsFile = "alluxio://localhost:19998/PersistBenchmark"), results)
+      saveAsFile = "alluxio://localhost:19998/PersistBenchmark1"), results)
 
     saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsObjectFile_Alluxio_BufferCacheOff",
-      saveAsFile = "alluxio://localhost:19998/PersistBenchmark", dropBufferCache = true), results)
+      saveAsFile = "alluxio://localhost:19998/PersistBenchmark2", dropBufferCache = true), results)
 
     persistBenchmark(spark, runConfig.copy(
       testName = "Persist_MemoryOnly_BufferCacheOn",
