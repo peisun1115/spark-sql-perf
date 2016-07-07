@@ -12,7 +12,7 @@
 package alluxio.benchmarks
 
 import org.apache.spark._
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{SQLContext, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.ArrayBuffer
@@ -21,7 +21,7 @@ import scala.sys.process._
 /**
   * Objectives: Test data frame performance
   * 1. Compare the following:
-  * Source in EBS, Alluxio, S3,  Alluxio S3.
+  * Source in EBS, Alluxio, S3,  Alluxio S3, Cache.
   * 2. Write performance.
   * Dst: EBS, Alluxio, S3, Alluxio with S3 as UFS.
   */
@@ -30,7 +30,8 @@ case class DataFrameConfig(
                             testName: String = "",
                             inputFile: String = "",
                             suffix: String = "",
-                            storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY
+                            storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
+                            size: Int = 500000000
                           ) {
   def inputFileName() = inputFile + "_" + suffix
 }
@@ -46,6 +47,27 @@ case class DataFrameResult(
 object DataFrameBenchmark {
   def dropBufferCache(): Unit = {
     "free && sync && echo 3 > /proc/sys/vm/drop_caches && free" !
+  }
+
+  def parquetWrite(spark: SparkContext, sqlContext: SQLContext,
+                   config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
+    var start: Long = -1
+    var end: Long = -1
+    import sqlContext.implicits._
+
+    var result = DataFrameResult(testName = config.testName)
+
+    val df = spark.makeRDD(1 to config.size).map(i => (i, i * 2)).toDF("single", "double")
+    df.select("single").where("single % 17112211 = 1").count()
+
+    start = System.nanoTime()
+    df.write.mode(saveMode = SaveMode.Overwrite).parquet(config.inputFileName())
+    end = System.nanoTime()
+    result = result.copy(runTime1 = (end - start) / 1e9)
+
+    dropBufferCache()
+
+    printResult(result)
   }
 
   def dfRead(sqlContext: SQLContext, config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
@@ -71,7 +93,9 @@ object DataFrameBenchmark {
 
     df.unpersist()
     dropBufferCache()
+
     results += result
+    printResult(result)
   }
 
   def dfPersist(sqlContext: SQLContext, config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
@@ -102,7 +126,9 @@ object DataFrameBenchmark {
 
     df.unpersist()
     dropBufferCache()
+
     results += result
+    printResult(result)
   }
 
   def printResult(result: DataFrameResult): Unit = {
@@ -117,6 +143,7 @@ object DataFrameBenchmark {
   }
 
   // args(0): suffix
+  // args(1): size
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("DataFrameBenchmark")
     val spark = new SparkContext(conf)
@@ -127,33 +154,56 @@ object DataFrameBenchmark {
 
     val sqlContext = new SQLContext(spark)
 
-    val runConfig = DataFrameConfig(suffix = args(0))
+    val config = DataFrameConfig(suffix = args(0), size = args(1).toInt)
     val results = ArrayBuffer.empty[DataFrameResult]
-/*
-    dfBenchmark(sqlContext, "/tmp/warmup")
 
-    dfPersist(sqlContext, "alluxio://localhost:19998/parquet" + args(0), StorageLevel.DISK_ONLY)
+    parquetWrite(spark, sqlContext, config.copy(
+      testName = "Write_EBS",
+      inputFile = "/tmp/parquet"),
+      results)
+    parquetWrite(spark, sqlContext, config.copy(
+      testName = "Write_S3",
+      inputFile = "s3n://peis-autobot/parquet"),
+      results)
+    parquetWrite(spark, sqlContext, config.copy(
+      testName = "Write_Alluxio",
+      inputFile = "alluxio://localhost:19998/parquet"),
+      results)
 
-    // Read parquet file from local disk, do a query, do another query.
-    dfBenchmark(sqlContext, "/tmp/parquet" + args(0))
+    dfRead(sqlContext, config.copy(
+      testName = "Read_EBS",
+      inputFile = "/tmp/parquet"),
+      results)
+    dfRead(sqlContext, config.copy(
+      testName = "Read_AlluxioOnS3",
+      inputFile = "alluxio://localhost:19998/parquet"),
+      results)
+    dfRead(sqlContext, config.copy(
+      testName = "Read_Alluxio",
+      inputFile = "alluxio://localhost:19998/parquet"),
+      results)
+    dfRead(sqlContext, config.copy(
+      testName = "Read_S3",
+      inputFile = "s3n://peis-autobot/parquet"),
+      results)
 
-    // Read parquet file from alluxio, do a query, do another query.
-    dfBenchmark(sqlContext, "alluxio://localhost:19998/parquet" + args(0))
+    dfPersist(sqlContext, config.copy(
+      testName = "Read_Cache_Disk",
+      inputFile = "/tmp/parquet",
+      storageLevel = StorageLevel.DISK_ONLY),
+      results)
+    dfPersist(sqlContext, config.copy(
+      testName = "Read_Cache_MemSer",
+      inputFile = "/tmp/parquet",
+      storageLevel = StorageLevel.MEMORY_ONLY_SER),
+      results)
+    dfPersist(sqlContext, config.copy(
+      testName = "Read_Cache_Mem",
+      inputFile = "/tmp/parquet",
+      storageLevel = StorageLevel.MEMORY_ONLY),
+      results)
 
-    if (!args(1).isEmpty()) {
-      // Read parquet file from S3, do a query, do another query.
-      dfBenchmark(sqlContext, "s3n://peis-autobot/parquet" + args(0))
-      dfPersist(sqlContext, "s3n://peis-autobot/parquet" + args(0), StorageLevel.DISK_ONLY)
-      dfPersist(sqlContext, "s3n://peis-autobot/parquet" + args(0), StorageLevel.MEMORY_ONLY)
-    }
-
-    // dfPersist(sqlContext, "alluxio://localhost:19998/parquet" + args(0), StorageLevel.MEMORY_AND_DISK)
-    dfPersist(sqlContext, "alluxio://localhost:19998/parquet" + args(0), StorageLevel.MEMORY_ONLY_SER)
-    dfPersist(sqlContext, "alluxio://localhost:19998/parquet" + args(0), StorageLevel.MEMORY_ONLY)
-
-    // Read parquet file, cache the data frame
-    dfBenchmark(sqlContext, "/tmp/parquet" + args(0), true)
-*/
+    printResults(results)
     spark.stop()
   }
 }
