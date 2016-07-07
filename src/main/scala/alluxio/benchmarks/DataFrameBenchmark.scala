@@ -68,6 +68,7 @@ object DataFrameBenchmark {
     dropBufferCache()
 
     printResult(result)
+    results += result
   }
 
   def dfRead(sqlContext: SQLContext, config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
