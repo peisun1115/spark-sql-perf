@@ -50,31 +50,30 @@ object PersistBenchmark {
   }
 
   def saveAsBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
-    val a = spark.textFile(runConfig.inputFile)
+    var a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
     var end: Long = -1
 
     var result = Result(testName = runConfig.testName)
 
     // SaveAsObjectFile in local disk.
-    var b = a.flatMap(x => x.split(" ")).map(x => (x, 1))
     start = System.nanoTime()
-    b.saveAsObjectFile(runConfig.saveAsFileName)
+    a.saveAsObjectFile(runConfig.saveAsFileName)
     end = System.nanoTime()
     result = result.copy(saveTime = (end - start) / 1e9)
 
-    b = spark.objectFile(runConfig.saveAsFileName)
+    a = spark.objectFile(runConfig.saveAsFileName)
 
     if (runConfig.dropBufferCache) dropBufferCache
 
     start = System.nanoTime()
     for (i <- 1 to runConfig.iterations) {
-      b.reduceByKey(_ + _).count()
+      a.count()
     }
     end = System.nanoTime()
-    result = result.copy(runTime = ((end - start) / 1e9) / 1e9)
+    result = result.copy(runTime = (end - start) / 1e9)
 
-    b.unpersist()
+    a.unpersist()
 
     results += result
     dropBufferCache
@@ -88,9 +87,8 @@ object PersistBenchmark {
     var result = Result(runConfig.testName)
 
     // SaveAs** in local disk
-    val b = a.flatMap(x => x.split(" ")).map(x => (x, 1))
     start = System.nanoTime
-    b.persist(runConfig.storageLevel)
+    a.persist(runConfig.storageLevel)
     end = System.nanoTime
     result = result.copy(saveTime = (end - start) / 1e9)
 
@@ -98,12 +96,12 @@ object PersistBenchmark {
 
     start = System.nanoTime
     for (i <- 1 to runConfig.iterations) {
-      b.reduceByKey(_ + _).count()
+      a.count()
     }
     end = System.nanoTime
     result = result.copy(runTime = (end - start) / 1e9)
 
-    b.unpersist()
+    a.unpersist()
 
     results += result
     dropBufferCache
@@ -115,7 +113,7 @@ object PersistBenchmark {
     }
   }
 
-  // args(0): inputfile
+  // args(0): inputFile
   // args(1): iterations
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("PersistBenchmark")
@@ -149,13 +147,11 @@ object PersistBenchmark {
       storageLevel = StorageLevel.MEMORY_ONLY_SER), results)
 
     persistBenchmark(spark, runConfig.copy(
-      testName = "Persist_Disk_BufferCacheOn",
-      storageLevel = StorageLevel.DISK_ONLY), results)
+      testName = "Persist_Disk_BufferCacheOn", storageLevel = StorageLevel.DISK_ONLY), results)
 
     persistBenchmark(spark, runConfig.copy(
       testName = "Persist_Disk_BufferCacheOff",
-      storageLevel = StorageLevel.DISK_ONLY,
-      dropBufferCache = true), results)
+      storageLevel = StorageLevel.DISK_ONLY, dropBufferCache = true), results)
 
     printResults(results)
 
