@@ -123,7 +123,7 @@ object DataFrameBenchmark {
     start = System.nanoTime()
     df.select("single").where("single % 17112211 = 1").count()
     end = System.nanoTime()
-    result = result.copy(runTime1 = (end - start) / 1e9)
+    result = result.copy(runTime2 = (end - start) / 1e9)
 
     df.unpersist()
     dropBufferCache()
@@ -168,7 +168,7 @@ object DataFrameBenchmark {
       results)
     parquetWrite(spark, sqlContext, config.copy(
       testName = "Write_Alluxio",
-      inputFile = "alluxio://localhost:19998/parquet"),
+      inputFile = "alluxio://localhost:19998/parquet_unused"),
       results)
 
     dfRead(sqlContext, config.copy(
@@ -204,6 +204,7 @@ object DataFrameBenchmark {
       storageLevel = StorageLevel.MEMORY_ONLY),
       results)
 
+    println("")
     printResults(results)
     spark.stop()
   }
