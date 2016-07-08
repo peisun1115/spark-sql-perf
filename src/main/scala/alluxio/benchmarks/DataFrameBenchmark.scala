@@ -31,7 +31,8 @@ case class DataFrameConfig(
                             inputFile: String = "",
                             suffix: String = "",
                             storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
-                            size: Int = 500000000
+                            size: Int = 500000000,
+                            disabledTests: Seq[String]
                           ) {
   def inputFileName() = inputFile + suffix
 }
@@ -51,6 +52,7 @@ object DataFrameBenchmark {
 
   def parquetWrite(spark: SparkContext, sqlContext: SQLContext,
                    config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
+    if (config.disabledTests.contains(config.testName)) return
     var start: Long = -1
     var end: Long = -1
     import sqlContext.implicits._
@@ -72,6 +74,7 @@ object DataFrameBenchmark {
   }
 
   def dfRead(sqlContext: SQLContext, config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
+    if (config.disabledTests.contains(config.testName)) return
     var start: Long = -1
     var end: Long = -1
 
@@ -100,6 +103,7 @@ object DataFrameBenchmark {
   }
 
   def dfPersist(sqlContext: SQLContext, config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
+    if (config.disabledTests.contains(config.testName)) return
     var start: Long = -1
     var end: Long = -1
 
@@ -145,6 +149,7 @@ object DataFrameBenchmark {
 
   // args(0): suffix
   // args(1): size
+  // args(2): disabledTests
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("DataFrameBenchmark")
     val spark = new SparkContext(conf)
@@ -155,7 +160,8 @@ object DataFrameBenchmark {
 
     val sqlContext = new SQLContext(spark)
 
-    val config = DataFrameConfig(suffix = args(0), size = args(1).toInt)
+    val config = DataFrameConfig(suffix = args(0), size = args(1).toInt,
+      disabledTests = args(2).split(",").toSeq)
     val results = ArrayBuffer.empty[DataFrameResult]
 
     parquetWrite(spark, sqlContext, config.copy(
