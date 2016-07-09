@@ -33,7 +33,8 @@ case class RunConfig(
                     suffix: String = System.nanoTime().toString,
                     storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
                     iterations: Int = 3,
-                    dropBufferCache: Boolean = false
+                    dropBufferCache: Boolean = false,
+                    enabledTests: Set[String]
                     ) {
   def saveAsFileName() = saveAsFile + "_" + suffix
 }
@@ -50,6 +51,8 @@ object PersistBenchmark {
   }
 
   def saveAsBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
+    if (!runConfig.enabledTests.contains(runConfig.testName) && runConfig.enabledTests.contains("ALL")) return
+
     var a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
     var end: Long = -1
@@ -80,6 +83,7 @@ object PersistBenchmark {
   }
 
   def persistBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
+    if (!runConfig.enabledTests.contains(runConfig.testName) && runConfig.enabledTests.contains("ALL")) return
     val a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
     var end: Long = -1
@@ -119,6 +123,7 @@ object PersistBenchmark {
 
   // args(0): inputFile
   // args(1): iterations
+  // args(2): enabledTests separated by ",". "ALL" can be used to enable all.
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("PersistBenchmark")
     val spark = new SparkContext(conf)
@@ -127,7 +132,8 @@ object PersistBenchmark {
     hadoopConf.set("fs.s3.awsAccessKeyId", sys.env.getOrElse("AWS_ACCESS_KEY_ID", ""))
     hadoopConf.set("fs.s3.awsSecretAccessKey", sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", ""))
 
-    val runConfig = RunConfig(inputFile = args(0), iterations = args(1).toInt)
+    val runConfig = RunConfig(inputFile = args(0), iterations = args(1).toInt,
+      enabledTests = args(2).split(",").toSet[String])
     val results = ArrayBuffer.empty[Result]
 
     saveAsBenchmark(spark, runConfig.copy(
