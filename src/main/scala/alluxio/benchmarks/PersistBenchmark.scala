@@ -66,7 +66,7 @@ object PersistBenchmark {
     if (runConfig.useTextFile) a.saveAsTextFile(runConfig.saveAsFileName) else a.saveAsObjectFile(runConfig.saveAsFileName)
     end = System.nanoTime()
     result = result.copy(saveTime = (end - start) / 1e9)
-    a = spark.objectFile(runConfig.saveAsFileName)
+    if (runConfig.useTextFile) a = spark.textFile(runConfig.saveAsFileName) else a = spark.objectFile(runConfig.saveAsFileName)
 
     if (runConfig.dropBufferCache) dropBufferCache
 
