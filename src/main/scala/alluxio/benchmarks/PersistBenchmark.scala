@@ -36,7 +36,7 @@ case class RunConfig(
                     dropBufferCache: Boolean = false,
                     enabledTests: Set[String],
                     resultFileName: String = "/tmp/PersistBenchmark",
-                    noSaveAs: Boolean = false
+                    useTextFile: Boolean = false
                     ) {
   def saveAsFileName() = saveAsFile + "_" + suffix
 }
@@ -62,12 +62,10 @@ object PersistBenchmark {
     var result = Result(testName = runConfig.testName)
 
     // SaveAsObjectFile in local disk.
-    if (!runConfig.noSaveAs) {
-      start = System.nanoTime()
-      a.saveAsObjectFile(runConfig.saveAsFileName)
-      end = System.nanoTime()
-      result = result.copy(saveTime = (end - start) / 1e9)
-    }
+    start = System.nanoTime()
+    if (runConfig.useTextFile) a.saveAsTextFile(runConfig.saveAsFile) else a.saveAsObjectFile(runConfig.saveAsFileName)
+    end = System.nanoTime()
+    result = result.copy(saveTime = (end - start) / 1e9)
     a = spark.objectFile(runConfig.saveAsFileName)
 
     if (runConfig.dropBufferCache) dropBufferCache
@@ -140,7 +138,7 @@ object PersistBenchmark {
 
     val runConfig = RunConfig(inputFile = args(0), iterations = args(1).toInt,
       enabledTests = args(2).split(",").toSet[String],
-      noSaveAs = args(3).toBoolean)
+      useTextFile = args(3).toBoolean)
     val results = ArrayBuffer.empty[Result]
 
     saveAsBenchmark(spark, runConfig.copy(
