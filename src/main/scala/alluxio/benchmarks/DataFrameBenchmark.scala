@@ -47,7 +47,7 @@ case class DataFrameResult(
 
 object DataFrameBenchmark {
   def dropBufferCache(): Unit = {
-    "free && sync && echo 3 > /proc/sys/vm/drop_caches && free" !
+    "free && sync && echo 3 > /proc/sys/vm/drop_caches && free" !!
   }
 
   def parquetWrite(spark: SparkContext, sqlContext: SQLContext,

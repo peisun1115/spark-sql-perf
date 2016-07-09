@@ -19,7 +19,7 @@ import scala.sys.process._
 
 /**
   * Objectives:
-  * 1. OFF_HEAP performance. Done. No big regression. Since Spark has removed this, it doesn't worth spending too much
+  * 1. OFF_HEAP performance. Since Spark has removed this, it doesn't worth spending too much
   *    time on this.
   * 2. In RDD world, compare performance between Persist (ram_serialized, ram_deserialized, disk_serialized and
   *    SaveAsObjectFiles (alluxio, disk, and S3). Also compare results if we clear buffer cache.
@@ -41,7 +41,7 @@ case class RunConfig(
 case class Result(
                  testName: String = "",
                  saveTime: Double = -1,
-                 runTime: Double = -1
+                 runTime: ArrayBuffer[Double] = ArrayBuffer.empty[Double]
                  )
 
 object PersistBenchmark {
@@ -66,12 +66,12 @@ object PersistBenchmark {
 
     if (runConfig.dropBufferCache) dropBufferCache
 
-    start = System.nanoTime()
     for (i <- 1 to runConfig.iterations) {
+      start = System.nanoTime()
       a.count()
+      end = System.nanoTime()
+      result.runTime += (end - start) / 1e9
     }
-    end = System.nanoTime()
-    result = result.copy(runTime = (end - start) / 1e9)
 
     a.unpersist()
 
@@ -94,17 +94,21 @@ object PersistBenchmark {
 
     if (runConfig.dropBufferCache) dropBufferCache
 
-    start = System.nanoTime
     for (i <- 1 to runConfig.iterations) {
+      start = System.nanoTime
       a.count()
+      end = System.nanoTime
+      result.runTime += (end - start) / 1e9
     }
-    end = System.nanoTime
-    result = result.copy(runTime = (end - start) / 1e9)
 
     a.unpersist()
 
     results += result
     dropBufferCache
+  }
+
+  def printResult(result: Result): Unit = {
+    println(s"${result.testName}: [saveTime ${result.saveTime}] [runTime ${result.runTime}]")
   }
 
   def printResults(results: ArrayBuffer[Result]): Unit = {

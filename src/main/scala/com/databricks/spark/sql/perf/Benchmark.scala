@@ -60,6 +60,7 @@ abstract class Benchmark(
         .toMap
   }.getOrElse(Map.empty)
 
+
   def currentConfiguration = BenchmarkConfiguration(
     sqlConf = sqlContext.getAllConfs,
     sparkConf = sparkContext.getConf.getAll.toMap,
