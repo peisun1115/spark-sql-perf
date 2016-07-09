@@ -34,7 +34,8 @@ case class RunConfig(
                     storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
                     iterations: Int = 3,
                     dropBufferCache: Boolean = false,
-                    enabledTests: Set[String]
+                    enabledTests: Set[String],
+                    resultFileName: String = "/tmp/PersistBenchmark"
                     ) {
   def saveAsFileName() = saveAsFile + "_" + suffix
 }
@@ -47,11 +48,11 @@ case class Result(
 
 object PersistBenchmark {
   def dropBufferCache(): Unit = {
-    "free && sync && echo 3 > /proc/sys/vm/drop_caches && free" !
+    "free && sync && echo 3 > /proc/sys/vm/drop_caches && free" !!
   }
 
   def saveAsBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
-    if (!runConfig.enabledTests.contains(runConfig.testName) && runConfig.enabledTests.contains("ALL")) return
+    if (!runConfig.enabledTests.contains(runConfig.testName) && !runConfig.enabledTests.contains("ALL")) return
 
     var a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
@@ -79,11 +80,12 @@ object PersistBenchmark {
     a.unpersist()
 
     results += result
+    printResult(result)
     dropBufferCache
   }
 
   def persistBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
-    if (!runConfig.enabledTests.contains(runConfig.testName) && runConfig.enabledTests.contains("ALL")) return
+    if (!runConfig.enabledTests.contains(runConfig.testName) && !runConfig.enabledTests.contains("ALL")) return
     val a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
     var end: Long = -1
@@ -108,6 +110,7 @@ object PersistBenchmark {
     a.unpersist()
 
     results += result
+    printResult(result)
     dropBufferCache
   }
 
@@ -117,7 +120,7 @@ object PersistBenchmark {
 
   def printResults(results: ArrayBuffer[Result]): Unit = {
     for (result <- results) {
-      println(s"${result.testName}: [saveTime ${result.saveTime}] [runTime ${result.runTime}]")
+      printResult(result)
     }
   }
 
@@ -186,8 +189,6 @@ object PersistBenchmark {
       testName = "Persist_Disk_BufferCacheOff",
       storageLevel = StorageLevel.DISK_ONLY,
       dropBufferCache = true), results)
-
-    printResults(results)
 
     spark.stop()
   }
