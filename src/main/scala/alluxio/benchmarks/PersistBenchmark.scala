@@ -35,7 +35,8 @@ case class RunConfig(
                     iterations: Int = 3,
                     dropBufferCache: Boolean = false,
                     enabledTests: Set[String],
-                    resultFileName: String = "/tmp/PersistBenchmark"
+                    resultFileName: String = "/tmp/PersistBenchmark",
+                    noSaveAs: Boolean = false
                     ) {
   def saveAsFileName() = saveAsFile + "_" + suffix
 }
@@ -61,11 +62,12 @@ object PersistBenchmark {
     var result = Result(testName = runConfig.testName)
 
     // SaveAsObjectFile in local disk.
-    start = System.nanoTime()
-    a.saveAsObjectFile(runConfig.saveAsFileName)
-    end = System.nanoTime()
-    result = result.copy(saveTime = (end - start) / 1e9)
-
+    if (!runConfig.noSaveAs) {
+      start = System.nanoTime()
+      a.saveAsObjectFile(runConfig.saveAsFileName)
+      end = System.nanoTime()
+      result = result.copy(saveTime = (end - start) / 1e9)
+    }
     a = spark.objectFile(runConfig.saveAsFileName)
 
     if (runConfig.dropBufferCache) dropBufferCache
@@ -127,6 +129,7 @@ object PersistBenchmark {
   // args(0): inputFile
   // args(1): iterations
   // args(2): enabledTests separated by ",". "ALL" can be used to enable all.
+  // args(3): NoSaveAs
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("PersistBenchmark")
     val spark = new SparkContext(conf)
@@ -136,7 +139,8 @@ object PersistBenchmark {
     hadoopConf.set("fs.s3.awsSecretAccessKey", sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", ""))
 
     val runConfig = RunConfig(inputFile = args(0), iterations = args(1).toInt,
-      enabledTests = args(2).split(",").toSet[String])
+      enabledTests = args(2).split(",").toSet[String],
+      noSaveAs = args(3).toBoolean)
     val results = ArrayBuffer.empty[Result]
 
     saveAsBenchmark(spark, runConfig.copy(
