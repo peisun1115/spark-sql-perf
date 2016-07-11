@@ -60,7 +60,7 @@ object DataFrameBenchmark {
     var result = DataFrameResult(testName = config.testName)
 
     val df = spark.makeRDD(1 to config.size).map(i => (i, i * 2)).toDF("single", "double")
-    df.select("single").where("single % 17112211 = 1").count()
+    df.select("single").where(s"single % ${config.size / 29} = 1").count()
 
     start = System.nanoTime()
     df.write.mode(saveMode = SaveMode.Overwrite).parquet(config.inputFileName())
@@ -86,12 +86,12 @@ object DataFrameBenchmark {
     result = result.copy(readTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.select("single").where("single % 17112211 = 1").count()
+    df.select("single").where(s"single % ${config.size / 29} = 1").count()
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.select("single").where("single % 17112211 = 1").count()
+    df.select("single").where(s"single % ${config.size / 29} = 1").count()
     end = System.nanoTime()
     result = result.copy(runTime2 = (end - start) / 1e9)
 
@@ -125,12 +125,12 @@ object DataFrameBenchmark {
     result = result.copy(cacheTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.select("single").where("single % 17112211 = 1").count()
+    df.select("single").where(s"single % ${config.size / 29} = 1").count()
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.select("single").where("single % 17112211 = 1").count()
+    df.select("single").where(s"single % ${config.size / 29} = 1").count()
     end = System.nanoTime()
     result = result.copy(runTime2 = (end - start) / 1e9)
 
