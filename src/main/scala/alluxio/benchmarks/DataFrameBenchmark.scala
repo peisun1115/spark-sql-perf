@@ -115,7 +115,12 @@ object DataFrameBenchmark {
     result = result.copy(readTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.persist(config.storageLevel)
+    if (config.storageLevel == StorageLevel.MEMORY_ONLY) {
+      df.cache()
+    } else {
+      df.persist(config.storageLevel)
+    }
+
     end = System.nanoTime()
     result = result.copy(cacheTime = (end - start) / 1e9)
 
