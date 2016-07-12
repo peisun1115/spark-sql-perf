@@ -11,12 +11,17 @@
 
 package alluxio.benchmarks
 
-import java.io.{BufferedWriter, FileWriter, PrintWriter}
+import java.io.{BufferedWriter, ByteArrayOutputStream, FileWriter, PrintWriter}
 
-import org.apache.spark._
+import com.esotericsoftware.kryo.io.Input
+import org.apache.hadoop.io.{BytesWritable, NullWritable}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable.ArrayBuffer
+import scala.reflect.ClassTag
 import scala.sys.process._
 
 /**
@@ -37,7 +42,8 @@ case class RunConfig(
                     iterations: Int = 2,
                     enabledTests: Set[String],
                     resultPath: String = "/tmp/PersistBenchmark",
-                    useTextFile: Boolean = false
+                    useTextFile: Boolean = false,
+                    useKyro: Boolean = false
                     ) {
   def saveAsFileName() = saveAsFile + "_" + suffix
 }
@@ -64,10 +70,22 @@ object PersistBenchmark {
 
     // SaveAsObjectFile in local disk.
     start = System.nanoTime()
-    if (runConfig.useTextFile) a.saveAsTextFile(runConfig.saveAsFileName) else a.saveAsObjectFile(runConfig.saveAsFileName)
+    if (runConfig.useTextFile) {
+      a.saveAsTextFile(runConfig.saveAsFileName)
+    } else if (runConfig.useKyro) {
+      saveAsObjectFile(a, runConfig.saveAsFileName)
+    } else {
+      a.saveAsObjectFile(runConfig.saveAsFileName)
+    }
     end = System.nanoTime()
     result = result.copy(saveTime = (end - start) / 1e9)
-    if (runConfig.useTextFile) a = spark.textFile(runConfig.saveAsFileName) else a = spark.objectFile(runConfig.saveAsFileName)
+    if (runConfig.useTextFile) {
+      a = spark.textFile(runConfig.saveAsFileName)
+    } else if (runConfig.useKyro) {
+      a = objectFile(spark, runConfig.saveAsFileName)
+    } else {
+      a = spark.objectFile(runConfig.saveAsFileName)
+    }
 
     dropBufferCache
 
@@ -165,6 +183,21 @@ object PersistBenchmark {
 
 
     saveAsBenchmark(spark, runConfig.copy(
+      testName = "SaveAsKyroFile_Disk",
+      useKyro = true,
+      saveAsFile = "/tmp/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testName = "SaveAsKyroFile_Alluxio",
+      useKyro = true,
+      saveAsFile = s"alluxio://${alluxioMaster}/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testName = "SaveAsKyroFile_S3",
+      useKyro = true,
+      saveAsFile = s"s3n://${awsS3Bucket}/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
       testName = "SaveAsTextFile_Disk",
       useTextFile = true,
       saveAsFile = "/tmp/PersistBenchmark"), results)
@@ -196,5 +229,51 @@ object PersistBenchmark {
       storageLevel = StorageLevel.DISK_ONLY), results)
 
     spark.stop()
+  }
+
+
+  // copied from https://github.com/phatak-dev/blog/blob/master/code/kryoexample/src/main/scala/com/madhu/spark/kryo/KryoExample.scala
+
+  /*
+ * Used to write as Object file using kryo serialization
+ */
+  def saveAsObjectFile[T: ClassTag](rdd: RDD[T], path: String) {
+    val kryoSerializer = new KryoSerializer(rdd.context.getConf)
+
+    rdd.mapPartitions(iter => iter.grouped(10)
+      .map(_.toArray))
+      .map(splitArray => {
+        //initializes kyro and calls your registrator class
+        val kryo = kryoSerializer.newKryo()
+
+        //convert data to bytes
+        val bao = new ByteArrayOutputStream()
+        val output = kryoSerializer.newKryoOutput()
+        output.setOutputStream(bao)
+        kryo.writeClassAndObject(output, splitArray)
+        output.close()
+
+        // We are ignoring key field of sequence file
+        val byteWritable = new BytesWritable(bao.toByteArray)
+        (NullWritable.get(), byteWritable)
+      }).saveAsSequenceFile(path)
+  }
+
+  /*
+   * Method to read from object file which is saved kryo format.
+   */
+  def objectFile[T](sc: SparkContext, path: String, minPartitions: Int = 1)(implicit ct: ClassTag[T]) = {
+    val kryoSerializer = new KryoSerializer(sc.getConf)
+
+    sc.sequenceFile(path, classOf[NullWritable], classOf[BytesWritable], minPartitions)
+      .flatMap(x => {
+        val kryo = kryoSerializer.newKryo()
+        val input = new Input()
+        input.setBuffer(x._2.getBytes)
+        val data = kryo.readClassAndObject(input)
+        val dataObject = data.asInstanceOf[Array[T]]
+        dataObject
+      })
+
   }
 }
