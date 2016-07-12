@@ -91,12 +91,12 @@ object DataFrameBenchmark {
     result = result.copy(readTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).count()
+    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).show()
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).count()
+    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).show()
     end = System.nanoTime()
     result = result.copy(runTime2 = (end - start) / 1e9)
 
@@ -130,12 +130,12 @@ object DataFrameBenchmark {
     result = result.copy(cacheTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).count()
+    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).show()
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).count()
+    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).show()
     end = System.nanoTime()
     result = result.copy(runTime2 = (end - start) / 1e9)
 
