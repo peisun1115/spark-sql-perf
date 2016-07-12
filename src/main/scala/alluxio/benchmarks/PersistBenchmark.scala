@@ -19,7 +19,7 @@ import scala.sys.process._
 
 /**
   * Objectives:
-  * 1. OFF_HEAP performance. Done. No big regression. Since Spark has removed this, it doesn't worth spending too much
+  * 1. OFF_HEAP performance. Since Spark has removed this, it doesn't worth spending too much
   *    time on this.
   * 2. In RDD world, compare performance between Persist (ram_serialized, ram_deserialized, disk_serialized and
   *    SaveAsObjectFiles (alluxio, disk, and S3). Also compare results if we clear buffer cache.
@@ -33,7 +33,10 @@ case class RunConfig(
                     suffix: String = System.nanoTime().toString,
                     storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
                     iterations: Int = 3,
-                    dropBufferCache: Boolean = false
+                    dropBufferCache: Boolean = false,
+                    enabledTests: Set[String],
+                    resultFileName: String = "/tmp/PersistBenchmark",
+                    useTextFile: Boolean = false
                     ) {
   def saveAsFileName() = saveAsFile + "_" + suffix
 }
@@ -41,15 +44,17 @@ case class RunConfig(
 case class Result(
                  testName: String = "",
                  saveTime: Double = -1,
-                 runTime: Double = -1
+                 runTime: ArrayBuffer[Double] = ArrayBuffer.empty[Double]
                  )
 
 object PersistBenchmark {
   def dropBufferCache(): Unit = {
-    "free && sync && echo 3 > /proc/sys/vm/drop_caches && free" !
+    "free && sync && echo 3 > /proc/sys/vm/drop_caches && free" !!
   }
 
   def saveAsBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
+    if (!runConfig.enabledTests.contains(runConfig.testName) && !runConfig.enabledTests.contains("ALL")) return
+
     var a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
     var end: Long = -1
@@ -58,28 +63,29 @@ object PersistBenchmark {
 
     // SaveAsObjectFile in local disk.
     start = System.nanoTime()
-    a.saveAsObjectFile(runConfig.saveAsFileName)
+    if (runConfig.useTextFile) a.saveAsTextFile(runConfig.saveAsFileName) else a.saveAsObjectFile(runConfig.saveAsFileName)
     end = System.nanoTime()
     result = result.copy(saveTime = (end - start) / 1e9)
-
-    a = spark.objectFile(runConfig.saveAsFileName)
+    if (runConfig.useTextFile) a = spark.textFile(runConfig.saveAsFileName) else a = spark.objectFile(runConfig.saveAsFileName)
 
     if (runConfig.dropBufferCache) dropBufferCache
 
-    start = System.nanoTime()
     for (i <- 1 to runConfig.iterations) {
+      start = System.nanoTime()
       a.count()
+      end = System.nanoTime()
+      result.runTime += (end - start) / 1e9
     }
-    end = System.nanoTime()
-    result = result.copy(runTime = (end - start) / 1e9)
 
     a.unpersist()
 
     results += result
+    printResult(result)
     dropBufferCache
   }
 
   def persistBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
+    if (!runConfig.enabledTests.contains(runConfig.testName) && !runConfig.enabledTests.contains("ALL")) return
     val a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
     var end: Long = -1
@@ -94,27 +100,34 @@ object PersistBenchmark {
 
     if (runConfig.dropBufferCache) dropBufferCache
 
-    start = System.nanoTime
     for (i <- 1 to runConfig.iterations) {
+      start = System.nanoTime
       a.count()
+      end = System.nanoTime
+      result.runTime += (end - start) / 1e9
     }
-    end = System.nanoTime
-    result = result.copy(runTime = (end - start) / 1e9)
 
     a.unpersist()
 
     results += result
+    printResult(result)
     dropBufferCache
+  }
+
+  def printResult(result: Result): Unit = {
+    println(s"${result.testName}: [saveTime ${result.saveTime}] [runTime ${result.runTime}]")
   }
 
   def printResults(results: ArrayBuffer[Result]): Unit = {
     for (result <- results) {
-      println(s"${result.testName}: [saveTime ${result.saveTime}] [runTime ${result.runTime}]")
+      printResult(result)
     }
   }
 
   // args(0): inputFile
   // args(1): iterations
+  // args(2): enabledTests separated by ",". "ALL" can be used to enable all.
+  // args(3): NoSaveAs
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("PersistBenchmark")
     val spark = new SparkContext(conf)
@@ -123,7 +136,9 @@ object PersistBenchmark {
     hadoopConf.set("fs.s3.awsAccessKeyId", sys.env.getOrElse("AWS_ACCESS_KEY_ID", ""))
     hadoopConf.set("fs.s3.awsSecretAccessKey", sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", ""))
 
-    val runConfig = RunConfig(inputFile = args(0), iterations = args(1).toInt)
+    val runConfig = RunConfig(inputFile = args(0), iterations = args(1).toInt,
+      enabledTests = args(2).split(",").toSet[String],
+      useTextFile = args(3).toBoolean)
     val results = ArrayBuffer.empty[Result]
 
     saveAsBenchmark(spark, runConfig.copy(
@@ -176,8 +191,6 @@ object PersistBenchmark {
       testName = "Persist_Disk_BufferCacheOff",
       storageLevel = StorageLevel.DISK_ONLY,
       dropBufferCache = true), results)
-
-    printResults(results)
 
     spark.stop()
   }
