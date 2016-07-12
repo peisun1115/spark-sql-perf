@@ -60,7 +60,6 @@ object DataFrameBenchmark {
     var result = DataFrameResult(testName = config.testName)
 
     val df = spark.makeRDD(1 to config.size).map(i => (i, i * 2)).toDF("single", "double")
-    df.select("single").where(s"single % ${config.size / 29} = 1").count()
 
     start = System.nanoTime()
     df.write.mode(saveMode = SaveMode.Overwrite).parquet(config.inputFileName())
@@ -86,12 +85,12 @@ object DataFrameBenchmark {
     result = result.copy(readTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.select("single").where(s"single % ${config.size / 29} = 1").count()
+    df.agg(sum("single"), sum("double")).count()
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.select("single").where(s"single % ${config.size / 29} = 1").count()
+    df.agg(sum("single"), sum("double")).count()
     end = System.nanoTime()
     result = result.copy(runTime2 = (end - start) / 1e9)
 
@@ -125,12 +124,12 @@ object DataFrameBenchmark {
     result = result.copy(cacheTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.select("single").where(s"single % ${config.size / 29} = 1").count()
+    df.agg(sum("single"), sum("double")).count()
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.select("single").where(s"single % ${config.size / 29} = 1").count()
+    df.agg(sum("single"), sum("double")).count()
     end = System.nanoTime()
     result = result.copy(runTime2 = (end - start) / 1e9)
 
@@ -152,7 +151,7 @@ object DataFrameBenchmark {
     }
   }
 
-  // args(0): suffix
+  // args(0): suffix. This has to be empty when running on autobot
   // args(1): size
   // args(2): enabledTests separated by ",". "ALL" can be used to enable all.
   def main(args: Array[String]) {
@@ -165,6 +164,9 @@ object DataFrameBenchmark {
 
     val sqlContext = new SQLContext(spark)
 
+    val awsS3Bucket = sqlContext.getConf("spark.s3.awsS3Bcuekt", "peis-autobot");
+    val alluxioMaster = sqlContext.getConf("spark.alluxio.master", "localhost:19998");
+
     val config = DataFrameConfig(suffix = args(0), size = args(1).toInt,
       enabledTests = args(2).split(",").toSet)
     val results = ArrayBuffer.empty[DataFrameResult]
@@ -175,11 +177,11 @@ object DataFrameBenchmark {
       results)
     parquetWrite(spark, sqlContext, config.copy(
       testName = "Write_S3",
-      inputFile = "s3n://peis-autobot/alluxio_storage/parquet"),
+      inputFile = s"s3n://${awsS3Bucket}/alluxio_storage_non_ufs/parquet"),
       results)
     parquetWrite(spark, sqlContext, config.copy(
       testName = "Write_Alluxio",
-      inputFile = "alluxio://localhost:19998/parquet_unused"),
+      inputFile = s"alluxio://${alluxioMaster}/parquet_hot"),
       results)
 
     dfRead(sqlContext, config.copy(
@@ -188,15 +190,15 @@ object DataFrameBenchmark {
       results)
     dfRead(sqlContext, config.copy(
       testName = "Read_AlluxioOnS3",
-      inputFile = "alluxio://localhost:19998/parquet"),
+      inputFile = s"alluxio://${alluxioMaster}/parquet"),
       results)
     dfRead(sqlContext, config.copy(
       testName = "Read_Alluxio",
-      inputFile = "alluxio://localhost:19998/parquet"),
+      inputFile = s"alluxio://${alluxioMaster}/parquet_hot"),
       results)
     dfRead(sqlContext, config.copy(
       testName = "Read_S3",
-      inputFile = "s3n://peis-autobot/alluxio_storage/parquet"),
+      inputFile = s"s3n://${awsS3Bucket}/alluxio_storage_non_ufs/parquet"),
       results)
 
     dfPersist(sqlContext, config.copy(
