@@ -158,7 +158,7 @@ object DataFrameBenchmark {
     }
   }
 
-  // args(0): input file name
+  // args(0): input file name // This has to be the first name.
   // args(1): test name suffix
   // args(2): size
   // args(3): enabledTests separated by ",". "ALL" can be used to enable all.

@@ -34,8 +34,8 @@ else
     for arg in "$@"; do
       if [[ ${arg} =~ .*"Write_EBS".* ]]; then
             echo ${ALLUXIO_UFS}
-            aws s3 rm --recursive ${ALLUXIO_UFS}/parquet
-            aws s3 cp --recursive /tmp/parquet ${ALLUXIO_UFS}/parquet
+            aws s3 rm --recursive ${ALLUXIO_UFS}/$1
+            aws s3 cp --recursive /tmp/parquet ${ALLUXIO_UFS}/$1
         fi
     done
 fi
