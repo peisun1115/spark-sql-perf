@@ -158,10 +158,11 @@ object DataFrameBenchmark {
     }
   }
 
-  // args(0): test name suffix.
-  // args(1): size
-  // args(2): enabledTests separated by ",". "ALL" can be used to enable all.
-  // args(3): output file
+  // args(0): input file name
+  // args(1): test name suffix
+  // args(2): size
+  // args(3): enabledTests separated by ",". "ALL" can be used to enable all.
+  // args(4): output file
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("DataFrameBenchmark")
     val spark = new SparkContext(conf)
@@ -175,9 +176,11 @@ object DataFrameBenchmark {
     val awsS3Bucket = sqlContext.getConf("spark.s3.awsS3Bcuekt", "peis-autobot");
     val alluxioMaster = sqlContext.getConf("spark.alluxio.master", "localhost:19998");
 
-    val config = DataFrameConfig(suffix = args(0), size = args(1).toInt,
-      enabledTests = args(2).split(",").toSet,
-      resultPath = args(3))
+    val config = DataFrameConfig(
+      suffix = args(1),
+      size = args(2).toInt,
+      enabledTests = args(3).split(",").toSet,
+      resultPath = args(4))
     val results = ArrayBuffer.empty[DataFrameResult]
 
     parquetWrite(spark, sqlContext, config.copy(
@@ -186,11 +189,11 @@ object DataFrameBenchmark {
       results)
     parquetWrite(spark, sqlContext, config.copy(
       testNamePrefix = "Write_S3",
-      inputFile = s"s3n://${awsS3Bucket}/alluxio_storage_non_ufs/parquet"),
+      inputFile = s"s3n://${awsS3Bucket}/alluxio_storage_non_ufs/${args(0)}"),
       results)
     parquetWrite(spark, sqlContext, config.copy(
       testNamePrefix = "Write_Alluxio",
-      inputFile = s"alluxio://${alluxioMaster}/parquet_hot"),
+      inputFile = s"alluxio://${alluxioMaster}/${args(0)}_hot"),
       results)
 
     dfRead(sqlContext, config.copy(
@@ -199,30 +202,30 @@ object DataFrameBenchmark {
       results)
     dfRead(sqlContext, config.copy(
       testNamePrefix = "Read_AlluxioOnS3",
-      inputFile = s"alluxio://${alluxioMaster}/parquet"),
+      inputFile = s"alluxio://${alluxioMaster}/${args(0)}"),
       results)
     dfRead(sqlContext, config.copy(
       testNamePrefix = "Read_Alluxio",
-      inputFile = s"alluxio://${alluxioMaster}/parquet_hot"),
+      inputFile = s"alluxio://${alluxioMaster}/${args(0)}"),
       results)
     dfRead(sqlContext, config.copy(
       testNamePrefix = "Read_S3",
-      inputFile = s"s3n://${awsS3Bucket}/alluxio_storage/parquet"),
+      inputFile = s"s3n://${awsS3Bucket}/alluxio_storage/${args(0)}"),
       results)
 
     dfPersist(sqlContext, config.copy(
       testNamePrefix = "Read_Cache_Disk",
-      inputFile = "/tmp/parquet",
+      inputFile = s"/tmp/${args(0)}",
       storageLevel = StorageLevel.DISK_ONLY),
       results)
     dfPersist(sqlContext, config.copy(
       testNamePrefix = "Read_Cache_MemSer",
-      inputFile = "/tmp/parquet",
+      inputFile = s"/tmp/${args(0)}",
       storageLevel = StorageLevel.MEMORY_ONLY_SER),
       results)
     dfPersist(sqlContext, config.copy(
       testNamePrefix = "Read_Cache_Mem",
-      inputFile = "/tmp/parquet",
+      inputFile = s"/tmp/${args(0)}",
       storageLevel = StorageLevel.MEMORY_ONLY),
       results)
     spark.stop()
