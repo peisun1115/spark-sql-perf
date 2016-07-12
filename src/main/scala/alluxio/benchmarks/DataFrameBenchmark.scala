@@ -120,7 +120,7 @@ object DataFrameBenchmark {
     result = result.copy(readTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    if (config.storageLevel == StorageLevel.MEMORY_ONLY) {
+    if (config.storageLevel == StorageLevel.MEMORY_AND_DISK) {
       df.cache()
     } else {
       df.persist(config.storageLevel)
@@ -215,6 +215,11 @@ object DataFrameBenchmark {
       results)
 
     dfPersist(sqlContext, config.copy(
+      testNamePrefix = "Read_Cache",
+      inputFile = s"/tmp/${args(0)}",
+      storageLevel = StorageLevel.MEMORY_AND_DISK),
+      results)
+    dfPersist(sqlContext, config.copy(
       testNamePrefix = "Read_Cache_Disk",
       inputFile = s"/tmp/${args(0)}",
       storageLevel = StorageLevel.DISK_ONLY),
@@ -229,6 +234,7 @@ object DataFrameBenchmark {
       inputFile = s"/tmp/${args(0)}",
       storageLevel = StorageLevel.MEMORY_ONLY),
       results)
+
     spark.stop()
   }
 }
