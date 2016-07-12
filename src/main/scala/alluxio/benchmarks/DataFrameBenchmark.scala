@@ -207,7 +207,7 @@ object DataFrameBenchmark {
       results)
     dfRead(sqlContext, config.copy(
       testNamePrefix = "Read_S3",
-      inputFile = s"s3n://${awsS3Bucket}/alluxio_storage_non_ufs/parquet"),
+      inputFile = s"s3n://${awsS3Bucket}/alluxio_storage/parquet"),
       results)
 
     dfPersist(sqlContext, config.copy(
