@@ -121,7 +121,7 @@ object PersistBenchmark {
 
   def printResult(config: RunConfig, result: Result): Unit = {
     val printWriter = new PrintWriter(new BufferedWriter(new FileWriter(config.resultPath, true)))
-    println(s"${result.testName}: [saveTime ${result.saveTime}] [runTime ${result.runTime}]")
+    printWriter.println(s"${result.testName}: [saveTime ${result.saveTime}] [runTime ${result.runTime}]")
   }
 
   def printResults(config: RunConfig, results: ArrayBuffer[Result]): Unit = {
