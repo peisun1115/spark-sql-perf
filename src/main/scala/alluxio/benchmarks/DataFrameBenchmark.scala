@@ -57,7 +57,7 @@ object DataFrameBenchmark {
 
   def parquetWrite(spark: SparkContext, sqlContext: SQLContext,
                    config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
-    if (!config.enabledTests.contains(config.testName) && !config.enabledTests.contains("ALL")) return
+    if (!config.enabledTests.contains(config.testNamePrefix) && !config.enabledTests.contains("ALL")) return
     var start: Long = -1
     var end: Long = -1
     import sqlContext.implicits._
@@ -78,7 +78,7 @@ object DataFrameBenchmark {
   }
 
   def dfRead(sqlContext: SQLContext, config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
-    if (!config.enabledTests.contains(config.testName) && !config.enabledTests.contains("ALL")) return
+    if (!config.enabledTests.contains(config.testNamePrefix) && !config.enabledTests.contains("ALL")) return
     var start: Long = -1
     var end: Long = -1
 
@@ -107,7 +107,7 @@ object DataFrameBenchmark {
   }
 
   def dfPersist(sqlContext: SQLContext, config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
-    if (!config.enabledTests.contains(config.testName) && !config.enabledTests.contains("ALL")) return
+    if (!config.enabledTests.contains(config.testNamePrefix) && !config.enabledTests.contains("ALL")) return
     var start: Long = -1
     var end: Long = -1
 
