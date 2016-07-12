@@ -17,7 +17,7 @@ function prepareInput() {
         gunzip sample-1g.gz
     fi
     FILENAME="sample"
-    touch ${FILENAME}
+    > ${FILENAME}
     for ((i = 0; i < ${1}; i++)); do
         cat sample-1g >> ${FILENAME}
     done
