@@ -64,7 +64,8 @@ object DataFrameBenchmark {
 
     var result = DataFrameResult(testName = config.testName)
 
-    val df = spark.makeRDD(1 to config.size).map(i => (i, i * 2)).toDF("single", "double")
+    val df = spark.makeRDD(1 to config.size).map(i => (i * 0.9, i, i * 1.2, i * 1.4, i * 1.8, i * 2.0)).toDF(
+      "s1", "s2", "s3", "s4", "s5", "s6")
 
     start = System.nanoTime()
     df.write.mode(saveMode = SaveMode.Overwrite).parquet(config.inputFile)
@@ -90,12 +91,12 @@ object DataFrameBenchmark {
     result = result.copy(readTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.agg(sum("single"), sum("double")).count()
+    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).count()
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.agg(sum("single"), sum("double")).count()
+    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).count()
     end = System.nanoTime()
     result = result.copy(runTime2 = (end - start) / 1e9)
 
@@ -129,12 +130,12 @@ object DataFrameBenchmark {
     result = result.copy(cacheTime = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.agg(sum("single"), sum("double")).count()
+    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).count()
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     start = System.nanoTime()
-    df.agg(sum("single"), sum("double")).count()
+    df.agg(sum("s1"), sum("s2"), sum("s3"), sum("s4"), sum("s5"), sum("s6")).count()
     end = System.nanoTime()
     result = result.copy(runTime2 = (end - start) / 1e9)
 
