@@ -17,6 +17,7 @@ import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.ArrayBuffer
 import scala.sys.process._
+import org.apache.spark.sql.functions._
 
 /**
   * Objectives: Test data frame performance
