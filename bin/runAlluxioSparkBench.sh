@@ -16,7 +16,7 @@ function prepareInput() {
         wget https://s3.amazonaws.com/alluxio-sample/datasets/sample-1g.gz
         gunzip sample-1g.gz
     fi
-    FILENAME="sample-${i}g"
+    FILENAME="sample"
     if [[ ! -a ${FILENAME} ]]; then
         touch ${FILENAME}
         for ((i = 0; i < ${1}; i++)); do
