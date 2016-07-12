@@ -186,7 +186,7 @@ object DataFrameBenchmark {
 
     parquetWrite(spark, sqlContext, config.copy(
       testNamePrefix = "Write_EBS",
-      inputFile = "/tmp/parquet"),
+      inputFile = s"/tmp/${args(0)}"),
       results)
     parquetWrite(spark, sqlContext, config.copy(
       testNamePrefix = "Write_S3",
@@ -199,7 +199,7 @@ object DataFrameBenchmark {
 
     dfRead(sqlContext, config.copy(
       testNamePrefix = "Read_EBS",
-      inputFile = "/tmp/parquet"),
+      inputFile = s"/tmp/${args(0)}"),
       results)
     dfRead(sqlContext, config.copy(
       testNamePrefix = "Read_AlluxioOnS3",
