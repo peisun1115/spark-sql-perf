@@ -84,7 +84,7 @@ object PersistBenchmark {
     if (runConfig.useTextFile) {
       a = spark.textFile(runConfig.saveAsFileName)
     } else if (runConfig.useKyro) {
-      a = objectFile(spark, runConfig.saveAsFileName)
+      a = objectFile(spark, runConfig.saveAsFileName, spark.defaultMinPartitions)
     } else {
       a = spark.objectFile(runConfig.saveAsFileName)
     }
