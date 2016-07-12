@@ -11,13 +11,15 @@
 
 package alluxio.benchmarks
 
+import java.io.{File, PrintWriter}
+
 import org.apache.spark._
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{SQLContext, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.ArrayBuffer
 import scala.sys.process._
-import org.apache.spark.sql.functions._
 
 /**
   * Objectives: Test data frame performance
@@ -28,18 +30,20 @@ import org.apache.spark.sql.functions._
   */
 
 case class DataFrameConfig(
-                            testName: String = "",
+                            testNamePrefix: String = "",
                             inputFile: String = "",
                             suffix: String = "",
                             storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
                             size: Int = 500000000,
-                            enabledTests: Set[String]
+                            enabledTests: Set[String],
+                            resultPath: String = "/tmp/result"
                           ) {
-  def inputFileName() = inputFile + suffix
+  def testName() = testNamePrefix + suffix
 }
 
 case class DataFrameResult(
                             testName: String = "",
+                            testSize: String = "",
                             readTime: Double = -1,
                             cacheTime: Double = -1,
                             runTime1: Double = -1,
@@ -63,13 +67,13 @@ object DataFrameBenchmark {
     val df = spark.makeRDD(1 to config.size).map(i => (i, i * 2)).toDF("single", "double")
 
     start = System.nanoTime()
-    df.write.mode(saveMode = SaveMode.Overwrite).parquet(config.inputFileName())
+    df.write.mode(saveMode = SaveMode.Overwrite).parquet(config.inputFile)
     end = System.nanoTime()
     result = result.copy(runTime1 = (end - start) / 1e9)
 
     dropBufferCache()
 
-    printResult(result)
+    printResult(config, result)
     results += result
   }
 
@@ -81,7 +85,7 @@ object DataFrameBenchmark {
     var result = DataFrameResult(testName = config.testName)
 
     start = System.nanoTime()
-    val df = sqlContext.read.parquet(config.inputFileName())
+    val df = sqlContext.read.parquet(config.inputFile)
     end = System.nanoTime()
     result = result.copy(readTime = (end - start) / 1e9)
 
@@ -99,7 +103,7 @@ object DataFrameBenchmark {
     dropBufferCache()
 
     results += result
-    printResult(result)
+    printResult(config, result)
   }
 
   def dfPersist(sqlContext: SQLContext, config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
@@ -110,7 +114,7 @@ object DataFrameBenchmark {
     var result = DataFrameResult(testName = config.testName)
 
     start = System.nanoTime()
-    val df = sqlContext.read.parquet(config.inputFileName())
+    val df = sqlContext.read.parquet(config.inputFile)
     end = System.nanoTime()
     result = result.copy(readTime = (end - start) / 1e9)
 
@@ -138,23 +142,26 @@ object DataFrameBenchmark {
     dropBufferCache()
 
     results += result
-    printResult(result)
+    printResult(config, result)
   }
 
-  def printResult(result: DataFrameResult): Unit = {
-    println(s"${result.testName}: [readTime ${result.readTime}] " +
+  def printResult(config: DataFrameConfig, result: DataFrameResult): Unit = {
+    val printWriter = new PrintWriter(new File(config.resultPath))
+    printWriter.println(s"${result.testName}: [readTime ${result.readTime}] " +
       s"[cacheTime ${result.cacheTime}] [runTime1 ${result.runTime1}] [runTime2 ${result.runTime2}]")
+    printWriter.close()
   }
 
-  def printResults(results: ArrayBuffer[DataFrameResult]): Unit = {
+  def printResults(config: DataFrameConfig, results: ArrayBuffer[DataFrameResult]): Unit = {
     for (result <- results) {
-      printResult(result)
+      printResult(config, result)
     }
   }
 
-  // args(0): suffix. This has to be empty when running on autobot
+  // args(0): test name suffix.
   // args(1): size
   // args(2): enabledTests separated by ",". "ALL" can be used to enable all.
+  // args(3): output file
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("DataFrameBenchmark")
     val spark = new SparkContext(conf)
@@ -169,51 +176,52 @@ object DataFrameBenchmark {
     val alluxioMaster = sqlContext.getConf("spark.alluxio.master", "localhost:19998");
 
     val config = DataFrameConfig(suffix = args(0), size = args(1).toInt,
-      enabledTests = args(2).split(",").toSet)
+      enabledTests = args(2).split(",").toSet,
+      resultPath = args(3))
     val results = ArrayBuffer.empty[DataFrameResult]
 
     parquetWrite(spark, sqlContext, config.copy(
-      testName = "Write_EBS",
+      testNamePrefix = "Write_EBS",
       inputFile = "/tmp/parquet"),
       results)
     parquetWrite(spark, sqlContext, config.copy(
-      testName = "Write_S3",
+      testNamePrefix = "Write_S3",
       inputFile = s"s3n://${awsS3Bucket}/alluxio_storage_non_ufs/parquet"),
       results)
     parquetWrite(spark, sqlContext, config.copy(
-      testName = "Write_Alluxio",
+      testNamePrefix = "Write_Alluxio",
       inputFile = s"alluxio://${alluxioMaster}/parquet_hot"),
       results)
 
     dfRead(sqlContext, config.copy(
-      testName = "Read_EBS",
+      testNamePrefix = "Read_EBS",
       inputFile = "/tmp/parquet"),
       results)
     dfRead(sqlContext, config.copy(
-      testName = "Read_AlluxioOnS3",
+      testNamePrefix = "Read_AlluxioOnS3",
       inputFile = s"alluxio://${alluxioMaster}/parquet"),
       results)
     dfRead(sqlContext, config.copy(
-      testName = "Read_Alluxio",
+      testNamePrefix = "Read_Alluxio",
       inputFile = s"alluxio://${alluxioMaster}/parquet_hot"),
       results)
     dfRead(sqlContext, config.copy(
-      testName = "Read_S3",
+      testNamePrefix = "Read_S3",
       inputFile = s"s3n://${awsS3Bucket}/alluxio_storage_non_ufs/parquet"),
       results)
 
     dfPersist(sqlContext, config.copy(
-      testName = "Read_Cache_Disk",
+      testNamePrefix = "Read_Cache_Disk",
       inputFile = "/tmp/parquet",
       storageLevel = StorageLevel.DISK_ONLY),
       results)
     dfPersist(sqlContext, config.copy(
-      testName = "Read_Cache_MemSer",
+      testNamePrefix = "Read_Cache_MemSer",
       inputFile = "/tmp/parquet",
       storageLevel = StorageLevel.MEMORY_ONLY_SER),
       results)
     dfPersist(sqlContext, config.copy(
-      testName = "Read_Cache_Mem",
+      testNamePrefix = "Read_Cache_Mem",
       inputFile = "/tmp/parquet",
       storageLevel = StorageLevel.MEMORY_ONLY),
       results)
