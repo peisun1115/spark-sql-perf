@@ -31,8 +31,11 @@ if [[ ${TEST_NAME} == "PrepareInput" ]]; then
 else
     ${SPARK_HOME}/bin/spark-submit --master ${SPARK_MASTER} --class "alluxio.benchmarks.${TEST_NAME}" \
         ${SPARK_BENCH_HOME}/target/scala-2.11/spark-sql-perf-assembly-0.4.9-SNAPSHOT.jar "$@"
-    if [[ ${TEST_NAME} == "Write_EBS" ]]; then
-        aws s3 rm --recursive ${ALLUXIO_UFS}/parquet
-        aws s3 cp --recursive /tmp/parquet ${ALLUXIO_UFS}/parquet
-     fi
+    for arg in "$@"; do
+      if [[ ${arg} =~ .*"Write_EBS".* ]]; then
+            echo ${ALLUXIO_UFS}
+            aws s3 rm --recursive ${ALLUXIO_UFS}/parquet
+            aws s3 cp --recursive /tmp/parquet ${ALLUXIO_UFS}/parquet
+        fi
+    done
 fi
