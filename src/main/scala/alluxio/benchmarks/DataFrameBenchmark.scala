@@ -11,7 +11,7 @@
 
 package alluxio.benchmarks
 
-import java.io.{File, PrintWriter}
+import java.io.{BufferedWriter, File, FileWriter, PrintWriter}
 
 import org.apache.spark._
 import org.apache.spark.sql.functions._
@@ -146,7 +146,7 @@ object DataFrameBenchmark {
   }
 
   def printResult(config: DataFrameConfig, result: DataFrameResult): Unit = {
-    val printWriter = new PrintWriter(new File(config.resultPath))
+    val printWriter = new PrintWriter(new BufferedWriter(new FileWriter(config.resultPath, true)))
     printWriter.println(s"${result.testName}: [readTime ${result.readTime}] " +
       s"[cacheTime ${result.cacheTime}] [runTime1 ${result.runTime1}] [runTime2 ${result.runTime2}]")
     printWriter.close()
