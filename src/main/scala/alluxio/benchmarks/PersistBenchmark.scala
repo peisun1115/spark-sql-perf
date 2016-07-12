@@ -34,7 +34,8 @@ import scala.sys.process._
   */
 
 case class RunConfig(
-                    testName: String = "",
+                    testNamePrefix: String = "",
+                    testNameSuffix: String = "",
                     inputFile: String = "",
                     saveAsFile: String = "",
                     suffix: String = System.nanoTime().toString,
@@ -45,6 +46,7 @@ case class RunConfig(
                     useTextFile: Boolean = false,
                     useKyro: Boolean = false
                     ) {
+  def testName() = testNamePrefix + testNameSuffix
   def saveAsFileName() = saveAsFile + "_" + suffix
 }
 
@@ -60,7 +62,7 @@ object PersistBenchmark {
   }
 
   def saveAsBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
-    if (!runConfig.enabledTests.contains(runConfig.testName) && !runConfig.enabledTests.contains("ALL")) return
+    if (!runConfig.enabledTests.contains(runConfig.testNamePrefix) && !runConfig.enabledTests.contains("ALL")) return
 
     var a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
@@ -104,7 +106,7 @@ object PersistBenchmark {
   }
 
   def persistBenchmark(spark: SparkContext, runConfig: RunConfig, results: ArrayBuffer[Result]): Unit = {
-    if (!runConfig.enabledTests.contains(runConfig.testName) && !runConfig.enabledTests.contains("ALL")) return
+    if (!runConfig.enabledTests.contains(runConfig.testNamePrefix) && !runConfig.enabledTests.contains("ALL")) return
     val a = spark.textFile(runConfig.inputFile)
     var start: Long = -1
     var end: Long = -1
@@ -149,89 +151,6 @@ object PersistBenchmark {
     }
   }
 
-  // args(0): inputFile
-  // args(1): enabledTests separated by ",". "ALL" can be used to enable all.
-  // args(2): output file
-  def main(args: Array[String]) {
-    val conf = new SparkConf().setAppName("PersistBenchmark")
-    val spark = new SparkContext(conf)
-
-    val hadoopConf = spark.hadoopConfiguration
-    hadoopConf.set("fs.s3.awsAccessKeyId", sys.env.getOrElse("AWS_ACCESS_KEY_ID", ""))
-    hadoopConf.set("fs.s3.awsSecretAccessKey", sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", ""))
-
-    val awsS3Bucket = spark.getConf.get("spark.s3.awsS3Bcuekt", "peis-autobot")
-    val alluxioMaster = spark.getConf.get("spark.alluxio.master", "localhost:19998")
-
-    val runConfig = RunConfig(
-      inputFile = args(0),
-      enabledTests = args(1).split(",").toSet[String],
-      resultPath = args(2))
-    val results = ArrayBuffer.empty[Result]
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsObjectFile_Disk",
-      saveAsFile = "/tmp/PersistBenchmark"), results)
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsObjectFile_Alluxio",
-      saveAsFile = s"alluxio://${alluxioMaster}/PersistBenchmark"), results)
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsObjectFile_S3",
-      saveAsFile = s"s3n://${awsS3Bucket}/PersistBenchmark"), results)
-
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsKyroFile_Disk",
-      useKyro = true,
-      saveAsFile = "/tmp/PersistBenchmark"), results)
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsKyroFile_Alluxio",
-      useKyro = true,
-      saveAsFile = s"alluxio://${alluxioMaster}/PersistBenchmark"), results)
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsKyroFile_S3",
-      useKyro = true,
-      saveAsFile = s"s3n://${awsS3Bucket}/PersistBenchmark"), results)
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsTextFile_Disk",
-      useTextFile = true,
-      saveAsFile = "/tmp/PersistBenchmark"), results)
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsTextFile_Alluxio",
-      useTextFile = true,
-      saveAsFile = s"alluxio://${alluxioMaster}/PersistBenchmark"), results)
-
-    saveAsBenchmark(spark, runConfig.copy(
-      testName = "SaveAsTextFile_S3",
-      useTextFile = true,
-      saveAsFile = s"s3n://${awsS3Bucket}/PersistBenchmark"), results)
-
-    persistBenchmark(spark, runConfig.copy(
-      testName = "Persist_MemoryOnly",
-      storageLevel = StorageLevel.MEMORY_ONLY), results)
-
-    persistBenchmark(spark, runConfig.copy(
-      testName = "Persist_MemoryOnlySer",
-      storageLevel = StorageLevel.MEMORY_ONLY_SER), results)
-
-    persistBenchmark(spark, runConfig.copy(
-      testName = "Persist_Cache",
-      storageLevel = StorageLevel.MEMORY_AND_DISK), results)
-
-    persistBenchmark(spark, runConfig.copy(
-      testName = "Persist_Disk",
-      storageLevel = StorageLevel.DISK_ONLY), results)
-
-    spark.stop()
-  }
-
-
   // copied from https://github.com/phatak-dev/blog/blob/master/code/kryoexample/src/main/scala/com/madhu/spark/kryo/KryoExample.scala
 
   /*
@@ -274,6 +193,89 @@ object PersistBenchmark {
         val dataObject = data.asInstanceOf[Array[T]]
         dataObject
       })
+  }
 
+  // args(0): TestNameSuffix
+  // args(1): inputFile
+  // args(2): enabledTests separated by ",". "ALL" can be used to enable all.
+  // args(3): output file
+  def main(args: Array[String]) {
+    val conf = new SparkConf().setAppName("PersistBenchmark")
+    val spark = new SparkContext(conf)
+
+    val hadoopConf = spark.hadoopConfiguration
+    hadoopConf.set("fs.s3.awsAccessKeyId", sys.env.getOrElse("AWS_ACCESS_KEY_ID", ""))
+    hadoopConf.set("fs.s3.awsSecretAccessKey", sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", ""))
+
+    val awsS3Bucket = spark.getConf.get("spark.s3.awsS3Bcuekt", "peis-autobot")
+    val alluxioMaster = spark.getConf.get("spark.alluxio.master", "localhost:19998")
+
+    val runConfig = RunConfig(
+      testNameSuffix = args(0),
+      inputFile = args(1),
+      enabledTests = args(2).split(",").toSet[String],
+      resultPath = args(3))
+    val results = ArrayBuffer.empty[Result]
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsObjectFile_Disk",
+      saveAsFile = "/tmp/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsObjectFile_Alluxio",
+      saveAsFile = s"alluxio://${alluxioMaster}/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsObjectFile_S3",
+      saveAsFile = s"s3n://${awsS3Bucket}/PersistBenchmark"), results)
+
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsKyroFile_Disk",
+      useKyro = true,
+      saveAsFile = "/tmp/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsKyroFile_Alluxio",
+      useKyro = true,
+      saveAsFile = s"alluxio://${alluxioMaster}/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsKyroFile_S3",
+      useKyro = true,
+      saveAsFile = s"s3n://${awsS3Bucket}/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsTextFile_Disk",
+      useTextFile = true,
+      saveAsFile = "/tmp/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsTextFile_Alluxio",
+      useTextFile = true,
+      saveAsFile = s"alluxio://${alluxioMaster}/PersistBenchmark"), results)
+
+    saveAsBenchmark(spark, runConfig.copy(
+      testNamePrefix = "SaveAsTextFile_S3",
+      useTextFile = true,
+      saveAsFile = s"s3n://${awsS3Bucket}/PersistBenchmark"), results)
+
+    persistBenchmark(spark, runConfig.copy(
+      testNamePrefix = "Persist_MemoryOnly",
+      storageLevel = StorageLevel.MEMORY_ONLY), results)
+
+    persistBenchmark(spark, runConfig.copy(
+      testNamePrefix = "Persist_MemoryOnlySer",
+      storageLevel = StorageLevel.MEMORY_ONLY_SER), results)
+
+    persistBenchmark(spark, runConfig.copy(
+      testNamePrefix = "Persist_Cache",
+      storageLevel = StorageLevel.MEMORY_AND_DISK), results)
+
+    persistBenchmark(spark, runConfig.copy(
+      testNamePrefix = "Persist_Disk",
+      storageLevel = StorageLevel.DISK_ONLY), results)
+
+    spark.stop()
   }
 }
