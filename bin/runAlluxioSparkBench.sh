@@ -17,12 +17,10 @@ function prepareInput() {
         gunzip sample-1g.gz
     fi
     FILENAME="sample"
-    if [[ ! -a ${FILENAME} ]]; then
-        touch ${FILENAME}
-        for ((i = 0; i < ${1}; i++)); do
-            cat sample-1g >> ${FILENAME}
-        done
-    fi
+    touch ${FILENAME}
+    for ((i = 0; i < ${1}; i++)); do
+        cat sample-1g >> ${FILENAME}
+    done
     cd ${DIR}
 }
 
