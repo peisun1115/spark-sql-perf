@@ -58,7 +58,13 @@ object RunTPCDS {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf().setAppName(getClass.getName)
 
+
     val sc = SparkContext.getOrCreate(conf)
+
+    val hadoopConf = sc.hadoopConfiguration
+    hadoopConf.set("fs.s3.awsAccessKeyId", sys.env.getOrElse("AWS_ACCESS_KEY_ID", ""))
+    hadoopConf.set("fs.s3.awsSecretAccessKey", sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", ""))
+
     val sqlContext = SQLContext.getOrCreate(sc)
     import sqlContext.implicits._
 
