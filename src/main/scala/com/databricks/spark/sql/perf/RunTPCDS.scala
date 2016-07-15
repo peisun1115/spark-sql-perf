@@ -75,6 +75,8 @@ object RunTPCDS {
     val filter = sqlContext.getConf("spark.sql.perf.filter", "")
     val iterations = sqlContext.getConf("spark.sql.perf.iterations", "3").toInt
     val tableFilter = sqlContext.getConf("spark.sql.perf.table.filter", "")
+    val partionTables = sqlContext.getConf("spark.sql.perf.partition.tables", "false").toBoolean
+    val clusterByPartitionColumns = sqlContext.getConf("spark.sql.perf.cluster.partition.columns", "false").toBoolean
 
     val config = RunTPCDSConfig(
       generateInput = generateInput,
@@ -82,6 +84,8 @@ object RunTPCDS {
       scaleFactor = scaleFactor,
       tableFilter = tableFilter,
       inputDir = inputDir,
+      partitionTables = partionTables,
+      clusterByPartitionColumns = clusterByPartitionColumns,
       filter = Some(filter),
       iterations = iterations)
 
