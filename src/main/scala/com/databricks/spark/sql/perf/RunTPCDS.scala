@@ -33,6 +33,7 @@ case class RunTPCDSConfig(
     partitionTables: Boolean = false,
     clusterByPartitionColumns: Boolean = false,
     filter: Option[String] = None,
+    overwrite: Boolean = false,
     iterations: Int = 3)
 
 /**
@@ -77,6 +78,7 @@ object RunTPCDS {
     val tableFilter = sqlContext.getConf("spark.sql.perf.table.filter", "")
     val partionTables = sqlContext.getConf("spark.sql.perf.partition.tables", "false").toBoolean
     val clusterByPartitionColumns = sqlContext.getConf("spark.sql.perf.cluster.partition.columns", "false").toBoolean
+    val overwrite = sqlContext.getConf("spark.sql.perf.overwrite", "false").toBoolean
 
     val config = RunTPCDSConfig(
       generateInput = generateInput,
@@ -87,6 +89,7 @@ object RunTPCDS {
       partitionTables = partionTables,
       clusterByPartitionColumns = clusterByPartitionColumns,
       filter = Some(filter),
+      overwrite = overwrite,
       iterations = iterations)
 
     createTable(sqlContext, config)
@@ -98,7 +101,7 @@ object RunTPCDS {
     val tables = new Tables(sqlContext, config.dsdgenDir, config.scaleFactor)
     if (config.generateInput) {
       tables.genData(
-        config.inputDir, config.format, true, config.partitionTables, true, config.clusterByPartitionColumns, true,
+        config.inputDir, config.format, config.overwrite, config.partitionTables, true, config.clusterByPartitionColumns, true,
         config.tableFilter)
     }
     if (!config.databaseName.isEmpty) {
