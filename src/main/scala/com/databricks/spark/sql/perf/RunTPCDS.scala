@@ -34,7 +34,8 @@ case class RunTPCDSConfig(
     clusterByPartitionColumns: Boolean = false,
     filter: Option[String] = None,
     overwrite: Boolean = false,
-    iterations: Int = 3)
+    iterations: Int = 3,
+    partitions: Int = 20)
 
 /**
   * Runs a benchmark and prints the results to the screen.
@@ -79,6 +80,7 @@ object RunTPCDS {
     val partionTables = sqlContext.getConf("spark.sql.perf.partition.tables", "false").toBoolean
     val clusterByPartitionColumns = sqlContext.getConf("spark.sql.perf.cluster.partition.columns", "false").toBoolean
     val overwrite = sqlContext.getConf("spark.sql.perf.overwrite", "false").toBoolean
+    val partitions = sqlContext.getConf("spark.sql.perf.partitions", "20").toInt
 
     val config = RunTPCDSConfig(
       generateInput = generateInput,
@@ -90,7 +92,8 @@ object RunTPCDS {
       clusterByPartitionColumns = clusterByPartitionColumns,
       filter = Some(filter),
       overwrite = overwrite,
-      iterations = iterations)
+      iterations = iterations,
+      partitions = partitions)
 
     createTable(sqlContext, config)
     run(sqlContext, config)
@@ -102,7 +105,7 @@ object RunTPCDS {
     if (config.generateInput) {
       tables.genData(
         config.inputDir, config.format, config.overwrite, config.partitionTables, true, config.clusterByPartitionColumns, true,
-        config.tableFilter)
+        config.tableFilter, config.partitions)
     }
     if (!config.databaseName.isEmpty) {
       tables.createExternalTables(config.inputDir, config.format, config.databaseName, true)
