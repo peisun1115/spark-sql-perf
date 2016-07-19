@@ -2,10 +2,10 @@
 
 export SPARK_HOME=${SPARK_HOME:-${1}}
 
-sudo yum install gcc
-sudo yum install bison
-sudo yum install byacc
-sudo yum install flex
+sudo yum -y install gcc
+sudo yum -y install bison
+sudo yum -y install byacc
+sudo yum -y install flex
 
 cd ${SPARK_HOME}
 git clone https://github.com/peisun1115/tpcds-kit kit
