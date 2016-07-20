@@ -6,6 +6,10 @@ export SPARK_MASTER=${SPARK_MASTER:-${3}}
 
 RESULT=${4}
 
+for i in $(cat ${TPCDS_HOME}/conf/slaves); do
+    scp -r kit ${i}:${TPCDS_HOME}/kit
+done
+
 RESULT_PATH_S3=$(cat ${SPARK_HOME}/conf/spark-defaults.conf | grep 'spark.sql.perf.results' | awk '{print $NF}')
 aws s3 rm --recursive ${RESULT_PATH_S3}
 ${SPARK_HOME}/bin/spark-submit --name "tpcds" --class "com.databricks.spark.sql.perf.RunTPCDS" --master ${SPARK_MASTER} ${TPCDS_HOME}/target/scala-2.11/spark-sql-perf-assembly-0.4.9-SNAPSHOT.jar

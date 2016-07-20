@@ -44,7 +44,8 @@ case class RunConfig(
                     enabledTests: Set[String],
                     resultPath: String = "/tmp/PersistBenchmark",
                     useTextFile: Boolean = false,
-                    useKyro: Boolean = false
+                    useKyro: Boolean = false,
+                    skipSave: Boolean = false
                     ) {
   def testName() = testNamePrefix + testNameSuffix
   def saveAsFileName() = saveAsFile + "_" + suffix
@@ -70,24 +71,26 @@ object PersistBenchmark {
 
     var result = Result(testName = runConfig.testName)
 
-    // SaveAsObjectFile in local disk.
-    start = System.nanoTime()
-    if (runConfig.useTextFile) {
-      a.saveAsTextFile(runConfig.saveAsFileName)
-    } else if (runConfig.useKyro) {
-      saveAsObjectFile(a, runConfig.saveAsFileName)
-    } else {
-      a.saveAsObjectFile(runConfig.saveAsFileName)
+    if (!runConfig.skipSave) {
+      // SaveAsObjectFile in local disk.
+      start = System.nanoTime()
+      if (runConfig.useTextFile) {
+        a.saveAsTextFile(runConfig.saveAsFileName)
+      } else if (runConfig.useKyro) {
+        saveAsObjectFile(a, runConfig.saveAsFileName)
+      } else {
+        a.saveAsObjectFile(runConfig.saveAsFileName)
+      }
+      end = System.nanoTime()
+      result = result.copy(saveTime = (end - start) / 1e9)
     }
-    end = System.nanoTime()
-    result = result.copy(saveTime = (end - start) / 1e9)
-    if (runConfig.useTextFile) {
+   if (runConfig.useTextFile) {
       a = spark.textFile(runConfig.saveAsFileName)
-    } else if (runConfig.useKyro) {
+   } else if (runConfig.useKyro) {
       a = objectFile(spark, runConfig.saveAsFileName, spark.defaultMinPartitions)
-    } else {
+   } else {
       a = spark.objectFile(runConfig.saveAsFileName)
-    }
+   }
 
     dropBufferCache
 
@@ -113,15 +116,17 @@ object PersistBenchmark {
 
     var result = Result(runConfig.testName)
 
-    // SaveAs** in local disk
-    start = System.nanoTime
-    if (runConfig.storageLevel != StorageLevel.MEMORY_AND_DISK) {
-      a.persist(runConfig.storageLevel)
-    } else {
-      a.cache()
+    if (runConfig.skipSave) {
+      // SaveAs** in local disk
+      start = System.nanoTime
+      if (runConfig.storageLevel != StorageLevel.MEMORY_AND_DISK) {
+        a.persist(runConfig.storageLevel)
+      } else {
+        a.cache()
+      }
+      end = System.nanoTime
+      result = result.copy(saveTime = (end - start) / 1e9)
     }
-    end = System.nanoTime
-    result = result.copy(saveTime = (end - start) / 1e9)
 
     dropBufferCache
 
@@ -199,6 +204,7 @@ object PersistBenchmark {
   // args(1): inputFile
   // args(2): enabledTests separated by ",". "ALL" can be used to enable all.
   // args(3): output file
+  // args(4): skip Saving
   def main(args: Array[String]) {
     val conf = new SparkConf().setAppName("PersistBenchmark")
     val spark = new SparkContext(conf)
@@ -214,7 +220,8 @@ object PersistBenchmark {
       testNameSuffix = args(0),
       inputFile = args(1),
       enabledTests = args(2).split(",").toSet[String],
-      resultPath = args(3))
+      resultPath = args(3),
+      skipSave = args(4).toBoolean)
     val results = ArrayBuffer.empty[Result]
 
     saveAsBenchmark(spark, runConfig.copy(
