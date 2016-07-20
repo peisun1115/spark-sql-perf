@@ -38,7 +38,6 @@ case class RunConfig(
                     testNameSuffix: String = "",
                     inputFile: String = "",
                     saveAsFile: String = "",
-                    suffix: String = System.nanoTime().toString,
                     storageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
                     iterations: Int = 2,
                     enabledTests: Set[String],
@@ -48,7 +47,7 @@ case class RunConfig(
                     skipSave: Boolean = false
                     ) {
   def testName() = testNamePrefix + testNameSuffix
-  def saveAsFileName() = saveAsFile + "_" + suffix
+  def saveAsFileName() = saveAsFile
 }
 
 case class Result(
