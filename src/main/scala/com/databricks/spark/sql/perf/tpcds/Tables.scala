@@ -154,7 +154,7 @@ class Tables(sqlContext: SQLContext, dsdgenDir: String, scaleFactor: Int) extend
           val grouped = sqlContext.sql(query)
           println(s"Pre-clustering with partitioning columns with query $query.")
           log.info(s"Pre-clustering with partitioning columns with query $query.")
-          grouped.write
+          grouped.write.partitionBy(partitionColumns : _*)
         } else {
           data.write
         }
@@ -163,9 +163,6 @@ class Tables(sqlContext: SQLContext, dsdgenDir: String, scaleFactor: Int) extend
         data.coalesce(1).write
       }
       writer.format(format).mode(mode)
-      if (partitionColumns.nonEmpty) {
-        writer.partitionBy(partitionColumns : _*)
-      }
       println(s"Generating table $name in database to $location with save mode $mode.")
       log.info(s"Generating table $name in database to $location with save mode $mode.")
       writer.save(location)

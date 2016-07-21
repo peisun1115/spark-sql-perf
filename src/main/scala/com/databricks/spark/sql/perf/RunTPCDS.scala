@@ -119,36 +119,16 @@ object RunTPCDS {
 
     val benchmark = new TPCDS(sqlContext = sqlContext)
 
-    println("== All TPCDS Queries names == ")
-    benchmark.all.foreach(x => println(x.name))
-
     val allQueries = config.filter.map { f =>
       benchmark.all.filter(_.name matches f)
     } getOrElse {
       benchmark.all
     }
 
-    println("== QUERY LIST ==")
-    allQueries.foreach(println)
-
     val experiment = benchmark.runExperiment(
       executionsToRun = allQueries,
       iterations = config.iterations)
 
-    println("== STARTING EXPERIMENT ==")
     experiment.waitForFinish(1000 * 60 * 30)
-
-    experiment.getCurrentRuns()
-      .withColumn("result", explode($"results"))
-      .select("result.*")
-      .groupBy("name")
-      .agg(
-        min($"executionTime") as 'minTimeMs,
-        max($"executionTime") as 'maxTimeMs,
-        avg($"executionTime") as 'avgTimeMs,
-        stddev($"executionTime") as 'stdDev)
-      .orderBy("name")
-      .show(1000, truncate = false)
-    println(s"""Results: sqlContext.read.json("${experiment.resultPath}")""")
   }
 }
