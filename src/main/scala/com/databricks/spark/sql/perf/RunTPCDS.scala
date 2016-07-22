@@ -104,7 +104,8 @@ object RunTPCDS {
     val tables = new Tables(sqlContext, config.dsdgenDir, config.scaleFactor)
     if (config.generateInput) {
       tables.genData(
-        config.inputDir, config.format, config.overwrite, config.partitionTables, true, config.clusterByPartitionColumns, true,
+        config.inputDir, config.format, config.overwrite, config.partitionTables, true,
+        clusterByPartitionColumns = config.clusterByPartitionColumns, true,
         config.tableFilter, config.partitions)
     }
     if (!config.databaseName.isEmpty) {
