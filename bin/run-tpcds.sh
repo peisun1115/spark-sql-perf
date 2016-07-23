@@ -16,7 +16,7 @@ done
 
 ALLUXIO_RESULT_DIR=$(cat ${SPARK_HOME}/conf/spark-defaults.conf | grep 'spark.sql.perf.results' | awk '{print $NF}')
 ${ALLUXIO_HOME}/bin/alluxio fs rm -R ${ALLUXIO_RESULT_DIR} || true
-${SPARK_HOME}/bin/spark-submit --name "tpcds" --class "com.databricks.spark.sql.perf.RunTPCDS" --master ${SPARK_MASTER} ${TPCDS_HOME}/target/scala-2.11/spark-sql-perf-assembly-0.4.9-SNAPSHOT.jar
+${SPARK_HOME}/bin/spark-submit --name "tpcds" --deploy-mode "cluster" --class "com.databricks.spark.sql.perf.RunTPCDS" --master ${SPARK_MASTER} ${TPCDS_HOME}/target/scala-2.11/spark-sql-perf-assembly-0.4.9-SNAPSHOT.jar
 
 ALLUXIO_RESULT_FILENAME=$(${ALLUXIO_HOME}/bin/alluxio fs ls -R ${ALLUXIO_RESULT_DIR} | grep 'json' | awk 'END{print $NF}')
 mkdir -p $(dirname ${TPCDS_HOME}/${RESULT})
