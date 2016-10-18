@@ -13,7 +13,7 @@ if [[ -z ${KIT_URI} ]]; then
     KIT_URI=https://s3-us-west-2.amazonaws.com/peis-autobot/tpcds/kit.tar.gz
 fi
 
-INSTALL_KIT="rm -rf ${TPCDS_HOME}/kit*; mkdir -p ${TPCDS_HOME}/kit; cd ${TPCDS_HOME}; wget ${KIT_URI}; tar xvfz kit.tar.gz"
+INSTALL_KIT="rm -rf ${TPCDS_HOME}/kit*; mkdir -p ${TPCDS_HOME}/kit; cd ${TPCDS_HOME}; wget ${KIT_URI} -O kit.tar.gz; tar xvfz kit.tar.gz"
 eval ${INSTALL_KIT}
 for i in $(cat ${SPARK_HOME}/conf/slaves); do
     ssh -o "StrictHostKeyChecking=no" ${i} "${INSTALL_KIT}"
