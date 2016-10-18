@@ -81,6 +81,7 @@ object RunTPCDS {
     val clusterByPartitionColumns = sqlContext.getConf("spark.sql.perf.cluster.partition.columns", "false").toBoolean
     val overwrite = sqlContext.getConf("spark.sql.perf.overwrite", "false").toBoolean
     val partitions = sqlContext.getConf("spark.sql.perf.partitions", "20").toInt
+    val databaseName = sqlContext.getConf("spark.sql.perf.database", "")
 
     val config = RunTPCDSConfig(
       generateInput = generateInput,
@@ -93,10 +94,12 @@ object RunTPCDS {
       filter = Some(filter),
       overwrite = overwrite,
       iterations = iterations,
-      partitions = partitions)
+      partitions = partitions,
+      databaseName = databaseName)
 
     createTable(sqlContext, config)
     run(sqlContext, config)
+    sc.stop()
   }
 
   def createTable(sqlContext: SQLContext, config: RunTPCDSConfig): Unit = {

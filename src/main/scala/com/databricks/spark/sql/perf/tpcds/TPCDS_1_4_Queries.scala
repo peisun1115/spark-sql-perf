@@ -115,7 +115,7 @@ trait Tpcds_1_4_Queries extends Benchmark {
             | LIMIT 100
             """.stripMargin),
     ("q4", """
-            |WITH year_total AS (
+            |WITH year_total AS
             | SELECT c_customer_id customer_id,
             |        c_first_name customer_first_name,
             |        c_last_name customer_last_name,
